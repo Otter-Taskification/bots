@@ -1127,12 +1127,20 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   } /* end column loop */
 
   OTTER_DECLARE_HANDLE(parent);
-  OTTER_POOL_BORROW(parent, "strassen (C=%p, A=%p, B=%p, d=%d)", C, A, B, Depth);
+  if (Depth == 1)
+  {
+    // there is 1 root task shared among its children
+    OTTER_POOL_BORROW(parent, "strassen (depth=%d)", Depth);
+  } else {
+    // each call to OptimizedStrassenMultiply_par with a given Depth represents 1 task which creates 7 children, so ensure each task gets used as parent once
+    // don't think I need to do OTTER_POOL_ADD after as the tasks are not used anywhere else
+    OTTER_POOL_POP(parent, "strassen (depth=%d)", Depth);
+  }
 
   /* M2 = A11 x B11 */
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", M2, A11, B11, Depth+1);
+    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (depth=%d)", Depth+1);
     OTTER_TASK_START(child);
     OptimizedStrassenMultiply_par(M2, A11, B11, QuadrantSize, QuadrantSize, RowWidthA, RowWidthB, Depth+1);
     OTTER_TASK_END(child);
@@ -1141,7 +1149,7 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   /* M5 = S1 * S5 */
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", M5, S1, S5, Depth+1);
+    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (depth=%d)", Depth+1);
     OTTER_TASK_START(child);
     OptimizedStrassenMultiply_par(M5, S1, S5, QuadrantSize, QuadrantSize, QuadrantSize, QuadrantSize, Depth+1);
     OTTER_TASK_END(child);
@@ -1150,7 +1158,7 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   /* Step 1 of T1 = S2 x S6 + M2 */
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", T1sMULT, S2, S6, Depth+1);
+    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (depth=%d)", Depth+1);
     OTTER_TASK_START(child);
     OptimizedStrassenMultiply_par(T1sMULT, S2, S6,  QuadrantSize, QuadrantSize, QuadrantSize, QuadrantSize, Depth+1);
     OTTER_TASK_END(child);
@@ -1159,7 +1167,7 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   /* Step 1 of T2 = T1 + S3 x S7 */
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", C22, S3, S7, Depth+1);
+    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (depth=%d)", Depth+1);
     OTTER_TASK_START(child);
     OptimizedStrassenMultiply_par(C22, S3, S7, QuadrantSize, RowWidthC /*FIXME*/, QuadrantSize, QuadrantSize, Depth+1);
     OTTER_TASK_END(child);
@@ -1168,7 +1176,7 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   /* Step 1 of C11 = M2 + A12 * B21 */
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", C11, A12, B21, Depth+1);
+    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (depth=%d)", Depth+1);
     OTTER_TASK_START(child);
     OptimizedStrassenMultiply_par(C11, A12, B21, QuadrantSize, RowWidthC, RowWidthA, RowWidthB, Depth+1);
     OTTER_TASK_END(child);
@@ -1177,7 +1185,7 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   /* Step 1 of C12 = S4 x B22 + T1 + M5 */
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", C12, S4, B22, Depth+1);
+    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (depth=%d)", Depth+1);
     OTTER_TASK_START(child);
     OptimizedStrassenMultiply_par(C12, S4, B22, QuadrantSize, RowWidthC, QuadrantSize, RowWidthB, Depth+1);
     OTTER_TASK_END(child);
@@ -1186,7 +1194,7 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   /* Step 1 of C21 = T2 - A22 * S8 */
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", C21, A22, S8, Depth+1);
+    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, "strassen (depth=%d)", Depth+1);
     OTTER_TASK_START(child);
     OptimizedStrassenMultiply_par(C21, A22, S8, QuadrantSize, RowWidthC, RowWidthA, QuadrantSize, Depth+1);
     OTTER_TASK_END(child);
@@ -1310,7 +1318,7 @@ void strassen_main_par(REAL *A, REAL *B, REAL *C, int n)
 	#pragma omp single
 	#pragma omp task untied
   {     
-    OTTER_DEFINE_TASK(strassen, OTTER_NULL_TASK, otter_add_to_pool, "strassen (C=%p, A=%p, B=%p, d=%d)", C, A, B, 1);
+    OTTER_DEFINE_TASK(strassen, OTTER_NULL_TASK, otter_add_to_pool, "strassen (depth=%d)", 1);
     OTTER_TASK_START(strassen);
 		OptimizedStrassenMultiply_par(C, A, B, n, n, n, n, 1);
     OTTER_TASK_END(strassen);
