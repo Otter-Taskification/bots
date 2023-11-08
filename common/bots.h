@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "otter.h"
+
 /* common flags */
 extern int bots_sequential_flag;
 extern int bots_benchmark_flag;
