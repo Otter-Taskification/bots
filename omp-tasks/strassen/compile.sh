@@ -3,7 +3,7 @@
 clang -fopenmp -DWITH_OTTER -c -I../..//common -O3   -I. -o main.o ../..//common/bots_main.c -DCDATE="\"2023/11/14;09:56\"" -DCC="\"clang -fopenmp\"" -DLD="\"clang -fopenmp\"" -DCMESSAGE="\"\"" -DLDFLAGS="\"-O3   \"" -DCFLAGS="\"-c -I../..//common -O3   -I.\""
 clang -fopenmp -DWITH_OTTER -c -I../..//common -O3   -o strassen.o strassen.c
 clang -fopenmp -DWITH_OTTER -c -I../..//common -O3   -o ../..//common/bots_common.o ../..//common/bots_common.c
-clang -fopenmp -O3   -o ../..//bin/strassen.clang.omp-tasks main.o strassen.o  ../..//common/bots_common.o -lotter-task-graph -lotf2
+clang -fopenmp -O3   -o ../..//bin/strassen.clang.omp-tasks main.o strassen.o  ../..//common/bots_common.o -lotter-task-graph -lotf2 -lm -lstdc++
 # clang -fopenmp -c -I../..//common -O3   -DMANUAL_CUTOFF -I. -o main-manual.o ../..//common/bots_main.c -DCDATE="\"2023/11/14;09:56\"" -DCC="\"clang -fopenmp\"" -DLD="\"clang -fopenmp\"" -DCMESSAGE="\"\"" -DLDFLAGS="\"-O3   \"" -DCFLAGS="\"-c -I../..//common -O3   -DMANUAL_CUTOFF -I.\""
 # clang -fopenmp -c -I../..//common -O3   -DMANUAL_CUTOFF -o strassen-manual.o strassen.c
 # clang -fopenmp -O3   -o ../..//bin/strassen.clang.omp-tasks-manual main-manual.o strassen-manual.o  ../..//common/bots_common.o

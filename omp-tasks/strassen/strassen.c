@@ -1323,6 +1323,7 @@ void strassen_main_par(REAL *A, REAL *B, REAL *C, int n)
 		OptimizedStrassenMultiply_par(C, A, B, n, n, n, n, 1);
     OTTER_TASK_END(strassen);
   }
+  OTTER_TASK_WAIT_FOR(OTTER_NULL_TASK, children);
 	bots_message(" completed!\n");
 }
 void strassen_main_seq(REAL *A, REAL *B, REAL *C, int n)
