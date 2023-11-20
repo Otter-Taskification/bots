@@ -1203,8 +1203,9 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   /**********************************************
   ** Synchronization Point
   **********************************************/
+  OTTER_TASK_WAIT_START(parent, children);
   #pragma omp taskwait
-  OTTER_TASK_WAIT_FOR(parent, children);
+  OTTER_TASK_WAIT_END(parent, children);
   /***************************************************************************
   ** Step through all columns row by row (vertically)
   ** (jumps in memory by RowWidth => bad locality)
@@ -1315,15 +1316,25 @@ void strassen_main_par(REAL *A, REAL *B, REAL *C, int n)
 {
 	bots_message("Computing parallel Strassen algorithm (n=%d) ", n);
 	#pragma omp parallel
-	#pragma omp single
-	#pragma omp task untied
-  {     
-    OTTER_DEFINE_TASK(strassen, OTTER_NULL_TASK, otter_add_to_pool, "strassen (depth=%d)", 1);
-    OTTER_TASK_START(strassen);
-		OptimizedStrassenMultiply_par(C, A, B, n, n, n, n, 1);
-    OTTER_TASK_END(strassen);
+  {
+    #pragma omp single
+    {
+      #pragma omp task untied
+      {
+        OTTER_DEFINE_TASK(strassen, OTTER_NULL_TASK, otter_add_to_pool, "strassen (depth=%d)", 1);
+        OTTER_TASK_START(strassen);
+        OptimizedStrassenMultiply_par(C, A, B, n, n, n, n, 1);
+        OTTER_TASK_END(strassen);
+      }
+      // Add an explicit barrier so Otter can measure suspended time for the
+      // encountering task
+      // NOTE: this must be inside the single region!
+      OTTER_TASK_WAIT_START(OTTER_NULL_TASK, children);
+      #pragma omp taskwait
+      OTTER_TASK_WAIT_END(OTTER_NULL_TASK, children);
+    }
+
   }
-  OTTER_TASK_WAIT_FOR(OTTER_NULL_TASK, children);
 	bots_message(" completed!\n");
 }
 void strassen_main_seq(REAL *A, REAL *B, REAL *C, int n)
