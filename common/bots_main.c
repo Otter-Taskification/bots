@@ -482,7 +482,7 @@ main(int argc, char* argv[])
 #endif
 
    bots_get_params(argc,argv);
-   OTTER_INITIALISE();
+   
    BOTS_APP_INIT;
    bots_set_info();
 
@@ -525,7 +525,7 @@ main(int argc, char* argv[])
 #endif
 
    BOTS_APP_FINI;
-   OTTER_FINALISE();
+   
 
    bots_print_results();
    return (0);

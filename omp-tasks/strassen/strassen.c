@@ -1315,6 +1315,7 @@ REAL *alloc_matrix(int n)
 void strassen_main_par(REAL *A, REAL *B, REAL *C, int n)
 {
 	bots_message("Computing parallel Strassen algorithm (n=%d) ", n);
+  OTTER_INITIALISE();
 	#pragma omp parallel
   {
     #pragma omp single
@@ -1335,6 +1336,7 @@ void strassen_main_par(REAL *A, REAL *B, REAL *C, int n)
     }
 
   }
+  OTTER_FINALISE();
 	bots_message(" completed!\n");
 }
 void strassen_main_seq(REAL *A, REAL *B, REAL *C, int n)
