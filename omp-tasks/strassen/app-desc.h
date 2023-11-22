@@ -20,6 +20,8 @@
 
 #include "omp-tasks-app.h"
 
+#define STRASSEN_TASK_LABEL "strassen (C=%p, depth=%d)"
+
 #define BOTS_APP_NAME "Strassen"
 #define BOTS_APP_PARAMETERS_DESC "N=%d:Y=%d"
 #define BOTS_APP_PARAMETERS_LIST ,bots_arg_size,bots_app_cutoff_value
