@@ -1138,66 +1138,66 @@ void OptimizedStrassenMultiply_par(REAL *C, REAL *A, REAL *B, unsigned MatrixSiz
   }
 
   /* M2 = A11 x B11 */
+  OTTER_DEFINE_TASK(child_1, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, M2, Depth+1);
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, M2, Depth+1);
-    OTTER_TASK_START(child);
+    OTTER_TASK_START(child_1);
     OptimizedStrassenMultiply_par(M2, A11, B11, QuadrantSize, QuadrantSize, RowWidthA, RowWidthB, Depth+1);
-    OTTER_TASK_END(child);
+    OTTER_TASK_END(child_1);
   }
 
   /* M5 = S1 * S5 */
+  OTTER_DEFINE_TASK(child_2, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, M5, Depth+1);
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, M5, Depth+1);
-    OTTER_TASK_START(child);
+    OTTER_TASK_START(child_2);
     OptimizedStrassenMultiply_par(M5, S1, S5, QuadrantSize, QuadrantSize, QuadrantSize, QuadrantSize, Depth+1);
-    OTTER_TASK_END(child);
+    OTTER_TASK_END(child_2);
   }
 
   /* Step 1 of T1 = S2 x S6 + M2 */
+  OTTER_DEFINE_TASK(child_3, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, T1sMULT, Depth+1);
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, T1sMULT, Depth+1);
-    OTTER_TASK_START(child);
+    OTTER_TASK_START(child_3);
     OptimizedStrassenMultiply_par(T1sMULT, S2, S6,  QuadrantSize, QuadrantSize, QuadrantSize, QuadrantSize, Depth+1);
-    OTTER_TASK_END(child);
+    OTTER_TASK_END(child_3);
   }
 
   /* Step 1 of T2 = T1 + S3 x S7 */
+  OTTER_DEFINE_TASK(child_4, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C22, Depth+1);
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C22, Depth+1);
-    OTTER_TASK_START(child);
+    OTTER_TASK_START(child_4);
     OptimizedStrassenMultiply_par(C22, S3, S7, QuadrantSize, RowWidthC /*FIXME*/, QuadrantSize, QuadrantSize, Depth+1);
-    OTTER_TASK_END(child);
+    OTTER_TASK_END(child_4);
   }
 
   /* Step 1 of C11 = M2 + A12 * B21 */
+  OTTER_DEFINE_TASK(child_5, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C11, Depth+1);
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C11, Depth+1);
-    OTTER_TASK_START(child);
+    OTTER_TASK_START(child_5);
     OptimizedStrassenMultiply_par(C11, A12, B21, QuadrantSize, RowWidthC, RowWidthA, RowWidthB, Depth+1);
-    OTTER_TASK_END(child);
+    OTTER_TASK_END(child_5);
   }
   
   /* Step 1 of C12 = S4 x B22 + T1 + M5 */
+  OTTER_DEFINE_TASK(child_6, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C12, Depth+1);
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C12, Depth+1);
-    OTTER_TASK_START(child);
+    OTTER_TASK_START(child_6);
     OptimizedStrassenMultiply_par(C12, S4, B22, QuadrantSize, RowWidthC, QuadrantSize, RowWidthB, Depth+1);
-    OTTER_TASK_END(child);
+    OTTER_TASK_END(child_6);
   }
 
   /* Step 1 of C21 = T2 - A22 * S8 */
+  OTTER_DEFINE_TASK(child_7, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C21, Depth+1);
   #pragma omp task untied
   {
-    OTTER_DEFINE_TASK(child, parent, otter_add_to_pool, STRASSEN_TASK_LABEL, C21, Depth+1);
-    OTTER_TASK_START(child);
+    OTTER_TASK_START(child_7);
     OptimizedStrassenMultiply_par(C21, A22, S8, QuadrantSize, RowWidthC, RowWidthA, QuadrantSize, Depth+1);
-    OTTER_TASK_END(child);
+    OTTER_TASK_END(child_7);
   }
 
   /**********************************************
@@ -1320,9 +1320,9 @@ void strassen_main_par(REAL *A, REAL *B, REAL *C, int n)
   {
     #pragma omp single
     {
+      OTTER_DEFINE_TASK(strassen, OTTER_NULL_TASK, otter_add_to_pool, STRASSEN_TASK_LABEL, C, 1);
       #pragma omp task untied
       {
-        OTTER_DEFINE_TASK(strassen, OTTER_NULL_TASK, otter_add_to_pool, STRASSEN_TASK_LABEL, C, 1);
         OTTER_TASK_START(strassen);
         OptimizedStrassenMultiply_par(C, A, B, n, n, n, n, 1);
         OTTER_TASK_END(strassen);
