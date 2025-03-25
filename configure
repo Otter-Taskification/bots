@@ -20,6 +20,8 @@ while [ "$#" -gt 0  ]; do
          ;;
       --compiler) shift; COMPILER=$1
          ;;
+      --otter) with_otter=yes
+         ;;
       --help) 
          show_help
          exit
@@ -34,6 +36,7 @@ GCC=`gcc -x c -c -fopenmp /dev/null -o /dev/null &>/dev/null  && echo "yes"`
 CLANG=`clang -x c -c -fopenmp /dev/null -o /dev/null &>/dev/null  && echo "yes"`
 MCC=`mcc --v &> /dev/null && echo "yes"`
 ICC=`icc -v &> /dev/null && echo "yes"`
+ICX=`icx -v &> /dev/null && echo "yes"`
 XLC=`xlc -qversion &> /dev/null && echo "yes"`
 PGI=`pgcc &> /dev/null && echo "yes"`
 SUN=`cc -xopenmp &> /dev/null && echo "yes"`
@@ -78,9 +81,9 @@ if [ -z "$COMPILER" ]; then
       COMPILERS[nc]="sunstudio"
    fi
 
-   if [ "$CLANG" = "yes" ]; then
+   if [ "$ICX" = "yes" ]; then
       let nc=nc+1
-      COMPILERS[nc]="clang"
+      COMPILERS[nc]="icx"
    fi
 
    if [ "$nc" -gt "0" ]; then
@@ -102,6 +105,8 @@ fi
 
 [ "$debug" = "yes" ] && DEBUG=-DBOTS_DEBUG
 [ "$warnings" = "yes" ] && WARNINGS=
+[ "$with_otter" = "yes" ] && OTTER_FLAGS="-DWITH_OTTER"
+[ "$with_otter" = "yes" ] && OTTER_LINK_FLAGS="-lotter-task-graph -lotf2 -lm -lstdc++"
 
 if [ "$COMPILER" = "gcc" -a "$GCC" = "yes" ]; then
    CC=gcc
@@ -109,14 +114,14 @@ if [ "$COMPILER" = "gcc" -a "$GCC" = "yes" ]; then
    OMPC="$CC -fopenmp"
    OMPLINK="$CC -fopenmp"
    LABEL=gcc
-   [ "$debug" = "yes" ] && DEBUG=$DEBUG -g
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
    [ "$warnings" = "yes" ] && WARNINGS="$WARNINGS -Wall -Werror"
 
    OPT_FLAGS=-O3
    CC_FLAGS="$DEBUG $WARNINGS"
    OMPC_FLAGS="$DEBUG $WARNINGS"
-   CLINK_FLAGS=$DEBUG
-   OMPLINK_FLAGS=$DEBUG
+   CLINK_FLAGS="$DEBUG"
+   OMPLINK_FLAGS="$DEBUG"
 fi
 
 if [ "$COMPILER" = "clang" -a "$CLANG" = "yes" ]; then
@@ -125,14 +130,14 @@ if [ "$COMPILER" = "clang" -a "$CLANG" = "yes" ]; then
    OMPC="$CC -fopenmp"
    OMPLINK="$CC -fopenmp"
    LABEL=clang
-   [ "$debug" = "yes" ] && DEBUG=$DEBUG -g
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
    [ "$warnings" = "yes" ] && WARNINGS="$WARNINGS -Wall -Werror"
 
    OPT_FLAGS=-O3
    CC_FLAGS="$DEBUG $WARNINGS"
    OMPC_FLAGS="$DEBUG $WARNINGS"
-   CLINK_FLAGS=$DEBUG
-   OMPLINK_FLAGS=$DEBUG
+   CLINK_FLAGS="$DEBUG"
+   OMPLINK_FLAGS="$DEBUG"
 fi
 
 if [ "$COMPILER" = "icc" -a "$ICC" = "yes" ]; then
@@ -141,14 +146,30 @@ if [ "$COMPILER" = "icc" -a "$ICC" = "yes" ]; then
    OMPC="$CC -openmp"
    OMPLINK="$CC -openmp"
    LABEL=icc
-   [ "$debug" = "yes" ] && DEBUG=$DEBUG -g
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
    [ "$warnings" = "yes" ] && WARNINGS="$WARNINGS -Wall -Werror"
 
    OPT_FLAGS=-O2
    CC_FLAGS="$DEBUG $WARNINGS"
    OMPC_FLAGS="$DEBUG $WARNINGS"
-   CLINK_FLAGS=$DEBUG
-   OMPLINK_FLAGS=$DEBUG
+   CLINK_FLAGS="$DEBUG"
+   OMPLINK_FLAGS="$DEBUG"
+fi
+
+if [ "$COMPILER" = "icx" -a "$ICX" = "yes" ]; then
+   CC=icx
+   CLINK=$CC
+   OMPC="$CC -fiopenmp"
+   OMPLINK="$CC -fiopenmp"
+   LABEL=icx
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
+   [ "$warnings" = "yes" ] && WARNINGS="$WARNINGS -Wall -Werror"
+
+   OPT_FLAGS=-O2
+   CC_FLAGS="$DEBUG $WARNINGS"
+   OMPC_FLAGS="$DEBUG $WARNINGS"
+   CLINK_FLAGS="$DEBUG"
+   OMPLINK_FLAGS="$DEBUG"
 fi
 
 
@@ -163,14 +184,14 @@ if [ "$COMPILER" = "mcc" -a "$MCC" = "yes" ]; then
    OMPC=$CC
    OMPLINK=$CC
    LABEL=mcc
-   [ "$debug" = "yes" ] && DEBUG=$DEBUG -g
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
    [ "$warnings" = "yes" ] && WARNINGS="$WARNINGS -Wall -Werror"
 
    OPT_FLAGS=-O3
    CC_FLAGS="$DEBUG $WARNINGS --no-openmp"
    OMPC_FLAGS="$DEBUG $WARNINGS"
    CLINK_FLAGS="$DEBUG --no-openmp"
-   OMPLINK_FLAGS=$DEBUG
+   OMPLINK_FLAGS="$DEBUG"
    OMPC_FINAL_FLAGS="--serialize"
 
    ENABLE_OMPSS=yes
@@ -189,13 +210,13 @@ if [ "$COMPILER" = "xlc" -a "$XLC" = "yes" ]; then
    OMPC="$CC -qsmp=omp"
    OMPLINK=$OMPC
    LABEL=xlc
-   [ "$debug" = "yes" ] && DEBUG=$DEBUG -g
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
    [ "$warnings" = "yes" ] && WARNINGS="$WARNINGS -qflag=w:w -qhalt=w"
 
    OPT_FLAGS=-O3
    CC_FLAGS="$DEBUG $WARNINGS"
    OMPC_FLAGS="-qthreaded $DEBUG $WARNINGS"
-   CLINK_FLAGS=$DEBUG
+   CLINK_FLAGS="$DEBUG"
    OMPLINK_FLAGS="-qthreaded $DEBUG"
 fi
 
@@ -215,8 +236,8 @@ if [ "$COMPILER" = "pgi" -a "$PGI" = "yes" ]; then
    OPT_FLAGS=-fast
    CC_FLAGS="$DEBUG $WARNINGS"
    OMPC_FLAGS="$DEBUG $WARNINGS"
-   CLINK_FLAGS=$DEBUG
-   OMPLINK_FLAGS=$DEBUG
+   CLINK_FLAGS="$DEBUG"
+   OMPLINK_FLAGS="$DEBUG"
 fi
 
 if [ "$COMPILER" = "sunstudio" -a "$SUN" = "yes" ]; then
@@ -225,7 +246,7 @@ if [ "$COMPILER" = "sunstudio" -a "$SUN" = "yes" ]; then
    OMPC="$CC -xopenmp"
    OMPLINK=$OMPC
    LABEL=suns
-   [ "$debug" = "yes" ] && DEBUG=$DEBUG -g
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
    if [ "$warnings" = "yes" ]; then
       echo "The sunstudio compiler doesn't support '--warnings' option (skipping it)"
       echo "Press (Enter) to continue..."
@@ -235,8 +256,8 @@ if [ "$COMPILER" = "sunstudio" -a "$SUN" = "yes" ]; then
    OPT_FLAGS=-fast
    CC_FLAGS="$DEBUG $WARNINGS"
    OMPC_FLAGS="$DEBUG $WARNINGS"
-   CLINK_FLAGS=$DEBUG
-   OMPLINK_FLAGS=$DEBUG
+   CLINK_FLAGS="$DEBUG"
+   OMPLINK_FLAGS="$DEBUG"
 fi
 
 if [ "$COMPILER" = "clang" -a "$CLANG" = "yes" ]; then
@@ -245,14 +266,14 @@ if [ "$COMPILER" = "clang" -a "$CLANG" = "yes" ]; then
    OMPC="$CC -fopenmp"
    OMPLINK="$CC -fopenmp"
    LABEL=clang
-   [ "$debug" = "yes" ] && DEBUG=$DEBUG -g
+   [ "$debug" = "yes" ] && DEBUG="$DEBUG -g"
    [ "$warnings" = "yes" ] && WARNINGS="$WARNINGS -Wall -Werror"
 
    OPT_FLAGS=-O3
    CC_FLAGS="$DEBUG $WARNINGS"
    OMPC_FLAGS="$DEBUG $WARNINGS"
-   CLINK_FLAGS=$DEBUG
-   OMPLINK_FLAGS=$DEBUG
+   CLINK_FLAGS="$DEBUG"
+   OMPLINK_FLAGS="$DEBUG"
 fi
 
 if [ -z "$CC" ]; then
@@ -262,6 +283,10 @@ fi
 
 if [ "$debug" = "yes" ]; then
    LABEL="$LABEL-debug"
+fi
+
+if [ "$with_otter" = "yes" ]; then
+   LABEL="$LABEL-otter"
 fi
 
 [ -f $OUTPUT ] && replacing_config=true
@@ -287,8 +312,8 @@ CLINK=$CLINK
 
 OPT_FLAGS=$OPT_FLAGS
 
-CC_FLAGS=$CC_FLAGS
-OMPC_FLAGS=$OMPC_FLAGS
+CC_FLAGS=$CC_FLAGS $OTTER_FLAGS
+OMPC_FLAGS=$OMPC_FLAGS $OTTER_FLAGS
 OMPSSC_FLAGS=$OMPSSC_FLAGS
 OMPC_FINAL_FLAGS=$OMPC_FINAL_FLAGS
 OMPSSC_FINAL_FLAG=$OMPSSC_FINAL_FLAGS
@@ -296,11 +321,12 @@ OMPSSC_FINAL_FLAG=$OMPSSC_FINAL_FLAGS
 CLINK_FLAGS=$CLINK_FLAGS
 OMPLINK_FLAGS=$OMPLINK_FLAGS
 OMPSSLINK_FLAGS=$OMPSSLINK_FLAGS
+OTTER_LINK_FLAGS=$OTTER_LINK_FLAGS
 
 EOF
 
 #check experimental features
-[ "$supports_final_clause" ] && echo "USE_FINAL_CLAUSE=yes" >> $OUTPUT  
+[ "$supports_final_clause" ] && echo "USE_FINAL_CLAUSE=yes" >> $OUTPUT
 
 echo "make.config generated"
 
@@ -321,4 +347,3 @@ fi
 
 echo "You can further refine your configuration in config/make.config"
 echo "Use the scripts in the run directory to execute them"
-
