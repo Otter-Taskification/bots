@@ -38,7 +38,7 @@
  * compute the W coefficients (that is, powers of the root of 1)
  * and store them into an array.
  */
-void compute_w_coefficients(int n, int a, int b, COMPLEX * W)
+void compute_w_coefficients(int n, int a, int b, COMPLEX * W, int depth)
 {
      register double twoPiOverN;
      register int k;
@@ -55,12 +55,24 @@ void compute_w_coefficients(int n, int a, int b, COMPLEX * W)
 	  }
      } else {
 	  int ab = (a + b) / 2;
-          #pragma omp task untied
-	  compute_w_coefficients(n, a, ab, W);
-          #pragma omp task untied
-	  compute_w_coefficients(n, ab + 1, b, W);
-          #pragma omp taskwait
-     }
+        OTTER_DEFINE_TASK(left_child, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "coeff", depth);
+        #pragma omp task untied
+        {
+            OTTER_TASK_START(left_child);
+            compute_w_coefficients(n, a, ab, W, depth+1);
+            OTTER_TASK_END()
+        }
+        OTTER_DEFINE_TASK(right_child, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "coeff", depth);
+        #pragma omp task untied
+        {
+            OTTER_TASK_START(right_child);
+            compute_w_coefficients(n, ab + 1, b, W, depth+1);
+            OTTER_TASK_END();
+        }
+        OTTER_TASK_WAIT_START(children);
+        #pragma omp taskwait
+        OTTER_TASK_WAIT_END();
+    }
 }
 void compute_w_coefficients_seq(int n, int a, int b, COMPLEX * W)
 {
@@ -4618,7 +4630,7 @@ void fft_unshuffle_32_seq(int a, int b, COMPLEX * in, COMPLEX * out, int m)
  * nW: size of W, that is, size of the original transform
  *
  */
-void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors, COMPLEX * W, int nW)
+void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors, COMPLEX * W, int nW, int depth)
 {
      int r, m;
      int k;
@@ -4657,56 +4669,122 @@ void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors, COMPLEX * W, int 
 	   * recurse 
 	   */
 	  if (r == 32) {
-               #pragma omp task untied
-	       fft_unshuffle_32(0, m, in, out, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_unshuffle", depth);
+        #pragma omp task untied
+        {
+            OTTER_TASK_START(fft);
+            fft_unshuffle_32(0, m, in, out, m);
+            OTTER_TASK_END();
+        }
 	  } else if (r == 16) {
-               #pragma omp task untied
-	       fft_unshuffle_16(0, m, in, out, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_unshuffle", depth);
+        #pragma omp task untied
+        {
+            OTTER_TASK_START(fft);
+            fft_unshuffle_16(0, m, in, out, m);
+            OTTER_TASK_END();
+        }
 	  } else if (r == 8) {
-               #pragma omp task untied
-	       fft_unshuffle_8(0, m, in, out, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_unshuffle", depth);
+        #pragma omp task untied
+        {
+            OTTER_TASK_START(fft);
+            fft_unshuffle_8(0, m, in, out, m);
+            OTTER_TASK_END();
+        }
 	  } else if (r == 4) {
-               #pragma omp task untied
-	       fft_unshuffle_4(0, m, in, out, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_unshuffle", depth);
+        #pragma omp task untied
+        {
+            OTTER_TASK_START(fft);
+            fft_unshuffle_4(0, m, in, out, m);
+            OTTER_TASK_END();
+        }
 	  } else if (r == 2) {
-               #pragma omp task untied
-	       fft_unshuffle_2(0, m, in, out, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_unshuffle", depth);
+        #pragma omp task untied
+        {
+            OTTER_TASK_START(fft);
+            fft_unshuffle_2(0, m, in, out, m);
+            OTTER_TASK_END();
+        }
 	  } else
 	       unshuffle(0, m, in, out, r, m);
 
-          #pragma omp taskwait
+        OTTER_TASK_WAIT_START(children);
+        #pragma omp taskwait
+        OTTER_TASK_WAIT_END();
 
 	  for (k = 0; k < n; k += m) {
-               #pragma omp task untied
-	       fft_aux(m, out + k, in + k, factors + 1, W, nW);
+            OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_aux", depth+1);
+            #pragma omp task untied
+            {
+                OTTER_TASK_START(fft);
+                fft_aux(m, out + k, in + k, factors + 1, W, nW, depth+1);
+                OTTER_TASK_END();
+            }
 	  }
-          #pragma omp taskwait
+        OTTER_TASK_WAIT_START(children);
+        #pragma omp taskwait
+        OTTER_TASK_WAIT_END();
      }
      /* 
       * now multiply by the twiddle factors, and perform m FFTs
       * of length r
       */
      if (r == 2) {
-          #pragma omp task untied
-	  fft_twiddle_2(0, m, in, out, W, nW, nW / n, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_twiddle", depth);
+        #pragma omp task untied 
+        {
+            OTTER_TASK_START(fft);
+            fft_twiddle_2(0, m, in, out, W, nW, nW / n, m);
+            OTTER_TASK_END();
+        }
      } else if (r == 4) {
-          #pragma omp task untied
-	  fft_twiddle_4(0, m, in, out, W, nW, nW / n, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_twiddle", depth);
+        #pragma omp task untied 
+        {
+            OTTER_TASK_START(fft);
+            fft_twiddle_4(0, m, in, out, W, nW, nW / n, m);
+            OTTER_TASK_END();
+        }
      } else if (r == 8) {
-          #pragma omp task untied
-	  fft_twiddle_8(0, m, in, out, W, nW, nW / n, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_twiddle", depth);
+        #pragma omp task untied 
+        {
+            OTTER_TASK_START(fft);
+            fft_twiddle_8(0, m, in, out, W, nW, nW / n, m);
+            OTTER_TASK_END();
+        }
      } else if (r == 16) {
-          #pragma omp task untied
-	  fft_twiddle_16(0, m, in, out, W, nW, nW / n, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_twiddle", depth);
+        #pragma omp task untied 
+        {
+            OTTER_TASK_START(fft);
+            fft_twiddle_16(0, m, in, out, W, nW, nW / n, m);
+            OTTER_TASK_END();
+        }
      } else if (r == 32) {
-          #pragma omp task untied
-	  fft_twiddle_32(0, m, in, out, W, nW, nW / n, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_twiddle", depth);
+        #pragma omp task untied 
+        {
+            OTTER_TASK_START(fft);
+            fft_twiddle_32(0, m, in, out, W, nW, nW / n, m);
+            OTTER_TASK_END();
+        }
      } else {
-          #pragma omp task untied
-	  fft_twiddle_gen(0, m, in, out, W, nW, nW / n, r, m);
+        OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_twiddle", depth);
+        #pragma omp task untied 
+        {
+            OTTER_TASK_START(fft);
+            fft_twiddle_gen(0, m, in, out, W, nW, nW / n, r, m);
+            OTTER_TASK_END();
+        }
      }
 
+     OTTER_TASK_WAIT_START(children);
      #pragma omp taskwait
+     OTTER_TASK_WAIT_END();
 
      return;
 }
@@ -4786,10 +4864,20 @@ void fft(int n, COMPLEX * in, COMPLEX * out)
 
      bots_message("Computing coefficients ");
      W = (COMPLEX *) malloc((n + 1) * sizeof(COMPLEX));
+     OTTER_INITIALISE();
      #pragma omp parallel
-     #pragma omp single
-     #pragma omp task untied
-     compute_w_coefficients(n, 0, n / 2, W);
+     {
+         #pragma omp single
+         {
+             OTTER_DEFINE_TASK(coefficients, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "coeff", 0);
+             #pragma omp task untied
+             {
+                 OTTER_TASK_START(coefficients);
+                 compute_w_coefficients(n, 0, n / 2, W, 0);
+                 OTTER_TASK_END();
+             }
+         }
+     }
      bots_message(" completed!\n");
 
      /* 
@@ -4804,9 +4892,19 @@ void fft(int n, COMPLEX * in, COMPLEX * out)
 
      bots_message("Computing FFT ");
      #pragma omp parallel
-     #pragma omp single
-     #pragma omp task untied
-     fft_aux(n, in, out, factors, W, n);
+     {
+         #pragma omp single
+         {
+            OTTER_DEFINE_TASK(fft, otterGetActiveTask(), otter_no_add_to_pool, FFT_TASK_LABEL, "fft_aux", 0);
+            #pragma omp task untied
+            {
+                OTTER_TASK_START(fft);
+                fft_aux(n, in, out, factors, W, n, 0);
+                OTTER_TASK_END();
+            }
+         }
+     }
+     OTTER_FINALISE();
      bots_message(" completed!\n");
 
      free(W);

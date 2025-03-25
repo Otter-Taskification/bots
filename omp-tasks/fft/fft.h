@@ -12,7 +12,7 @@ typedef struct {
 #define c_re(c)  ((c).re)
 #define c_im(c)  ((c).im)
 
-void compute_w_coefficients(int n, int a, int b, COMPLEX * W);
+void compute_w_coefficients(int n, int a, int b, COMPLEX * W, int depth);
 void compute_w_coefficients_seq(int n, int a, int b, COMPLEX * W);
 int factor(int n);
 void unshuffle(int a, int b, COMPLEX * in, COMPLEX * out, int r, int m);
@@ -45,7 +45,7 @@ void fft_twiddle_32(int a, int b, COMPLEX * in, COMPLEX * out, COMPLEX * W, int 
 void fft_twiddle_32_seq(int a, int b, COMPLEX * in, COMPLEX * out, COMPLEX * W, int nW, int nWdn, int m);
 void fft_unshuffle_32(int a, int b, COMPLEX * in, COMPLEX * out, int m);
 void fft_unshuffle_32_seq(int a, int b, COMPLEX * in, COMPLEX * out, int m);
-void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors, COMPLEX * W, int nW);
+void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors, COMPLEX * W, int nW, int depth);
 void fft_aux_seq(int n, COMPLEX * in, COMPLEX * out, int *factors, COMPLEX * W, int nW);
 void fft(int n, COMPLEX * in, COMPLEX * out);
 void fft_seq(int n, COMPLEX * in, COMPLEX * out);

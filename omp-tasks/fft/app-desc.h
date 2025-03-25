@@ -21,6 +21,9 @@
 #include "omp-tasks-app.h"
 #include "fft.h"
 
+// #define FFT_COMPUTE_W_TASK_LABEL "a=%d,b=%d"
+#define FFT_TASK_LABEL "%s(d=%d)"
+
 #define BOTS_APP_NAME "FFT"
 #define BOTS_APP_PARAMETERS_DESC "Size=%d"
 #define BOTS_APP_PARAMETERS_LIST ,bots_arg_size
